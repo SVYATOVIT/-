@@ -1,1 +1,263 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Супутникова карта</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.css">
+<style>
+  *{box-sizing:border-box}
+  html,body{height:100%;margin:0;font-family:system-ui,Segoe UI,Arial,sans-serif}
+  #map{height:100%;width:100%;background:#111}
+  #login{position:fixed;inset:0;z-index:3000;background:rgba(10,15,25,.92);display:flex;align-items:center;justify-content:center}
+  .box{background:#fff;padding:28px;border-radius:14px;width:min(360px,92vw);text-align:center}
+  .box h2{margin:0 0 6px}
+  .box p{color:#666;margin:0 0 18px;font-size:14px}
+  .box input{width:100%;padding:10px;border:1px solid #bbb;border-radius:8px;font-size:15px;margin-bottom:10px}
+  button,.btn{cursor:pointer;border:0;border-radius:8px;padding:10px 14px;font-size:14px;background:#1a73e8;color:#fff}
+  button.sec{background:#e8eaed;color:#222}
+  .box button{width:100%;margin-top:6px}
+  #err{color:#c62828;font-size:13px;min-height:18px}
+  #bar{position:absolute;z-index:1000;top:10px;left:56px;right:10px;display:flex;gap:8px;flex-wrap:wrap;pointer-events:none}
+  #bar>*{pointer-events:auto;box-shadow:0 1px 5px rgba(0,0,0,.4)}
+  #badge{background:#fff;padding:8px 12px;border-radius:8px;font-size:14px}
+  .ed label{display:block;font-size:12px;color:#555;margin-top:8px}
+  .ed input[type=text],.ed textarea{width:100%;padding:6px;border:1px solid #bbb;border-radius:6px;font:inherit}
+  .ed .row{display:flex;gap:6px;margin-top:10px}
+  .ed .del{background:#d93025}
+  .ph{display:flex;flex-wrap:wrap;gap:4px;margin-top:6px}
+  .ph div{position:relative}
+  .ph img{width:70px;height:70px;object-fit:cover;border-radius:6px;cursor:zoom-in}
+  .ph .x{position:absolute;top:-4px;right:-4px;width:18px;height:18px;padding:0;border-radius:50%;background:#d93025;font-size:11px;line-height:18px}
+  .view h3{margin:0 0 6px}
+  .view p{margin:0 0 8px;white-space:pre-wrap}
+  .view img{max-width:100%;border-radius:6px;margin-top:4px;cursor:zoom-in}
+  .pin{width:22px;height:22px;border-radius:50% 50% 50% 0;transform:rotate(-45deg);border:2px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.6)}
+  #lb{position:fixed;inset:0;z-index:4000;background:rgba(0,0,0,.9);display:none;align-items:center;justify-content:center}
+  #lb img{max-width:95vw;max-height:95vh}
+  .leaflet-popup-content{min-width:220px;max-height:60vh;overflow:auto}
+</style>
+</head>
+<body>
 
+<div id="login">
+  <div class="box">
+    <h2>🗺️ Супутникова карта</h2>
+    <p>Росія та Україна</p>
+    <input id="code" type="password" placeholder="Код адміністратора">
+    <div id="err"></div>
+    <button id="btnAdmin">Увійти як адмін</button>
+    <button id="btnGuest" class="sec">Продовжити як відвідувач</button>
+  </div>
+</div>
+
+<div id="map"></div>
+<div id="bar" hidden>
+  <div id="badge"></div>
+  <button id="btnExport" class="sec" hidden>⬇ Експорт data.json</button>
+  <label class="btn sec" id="lblImport" hidden>⬆ Імпорт<input id="fileImport" type="file" accept=".json" hidden></label>
+  <button id="btnReset" class="sec" hidden>↺ Скинути чернетку</button>
+  <button id="btnLogout" class="sec">Вийти</button>
+</div>
+<div id="lb"><img alt=""></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.js"></script>
+<script>
+/* ===== НАЛАШТУВАННЯ ===== */
+// SHA-256 хеш коду адміна. Зараз код: admin123
+// Щоб змінити: у консолі браузера виконайте
+//   crypto.subtle.digest('SHA-256',new TextEncoder().encode('НОВИЙ_КОД')).then(b=>console.log([...new Uint8Array(b)].map(x=>x.toString(16).padStart(2,'0')).join('')))
+// і вставте результат нижче.
+const ADMIN_HASH = '240be518fabd2724ddb6f04eeb1da5967448d7e831c08c8fa822809f74c720a9';
+const DATA_FILE = 'data.json';
+const DRAFT_KEY = 'mapDraft_v1';
+const COLORS = ['#e53935','#fb8c00','#fdd835','#43a047','#1e88e5','#8e24aa','#ffffff','#000000'];
+
+/* ===== КАРТА ===== */
+const map = L.map('map',{zoomControl:true,worldCopyJump:true}).setView([52,50],4);
+const sat = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',{maxZoom:18,attribution:'Esri, Maxar, Earthstar Geographics'});
+const labels = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}',{maxZoom:18});
+const osm = L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'© OpenStreetMap'});
+sat.addTo(map); labels.addTo(map);
+L.control.layers({'Супутник':sat,'Схема':osm},{'Підписи':labels}).addTo(map);
+L.control.scale({imperial:false}).addTo(map);
+
+const store = new L.FeatureGroup().addTo(map);
+let items = [], isAdmin = false, drawCtl = null;
+const uid = () => Math.random().toString(36).slice(2,10);
+const esc = s => String(s||'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+
+/* ===== ШАРИ ===== */
+function pinIcon(c){return L.divIcon({className:'',html:`<div class="pin" style="background:${c}"></div>`,iconSize:[22,22],iconAnchor:[11,22],popupAnchor:[0,-22]});}
+function makeLayer(it){
+  let l;
+  if(it.type==='marker') l = L.marker(it.coords,{icon:pinIcon(it.color)});
+  else if(it.type==='polygon') l = L.polygon(it.coords,{color:it.color,fillOpacity:.3,weight:3});
+  else l = L.polyline(it.coords,{color:it.color,weight:4});
+  l._id = it.id;
+  l.bindPopup(()=> isAdmin ? editor(it,l) : viewer(it), {maxWidth:320});
+  return l;
+}
+function render(){
+  store.clearLayers();
+  items.forEach(it=>store.addLayer(makeLayer(it)));
+}
+function coordsOf(l){
+  if(l instanceof L.Marker){const p=l.getLatLng();return [p.lat,p.lng];}
+  const r=l.getLatLngs(); const f=a=>Array.isArray(a)?a.map(f):[a.lat,a.lng];
+  return f(l instanceof L.Polygon ? r[0] : r);
+}
+
+/* ===== ПЕРЕГЛЯД (відвідувач) ===== */
+function photosHtml(it){return (it.photos||[]).map(p=>`<img src="${p}" alt="">`).join('');}
+function viewer(it){
+  const d=document.createElement('div'); d.className='view';
+  d.innerHTML=`<h3>${esc(it.title)||'Без назви'}</h3><p>${esc(it.desc)}</p>${photosHtml(it)}`;
+  return d;
+}
+
+/* ===== РЕДАКТОР (адмін) ===== */
+function editor(it,layer){
+  const d=document.createElement('div'); d.className='ed';
+  d.innerHTML=`
+    <label>Назва</label><input type="text" class="t" value="${esc(it.title)}">
+    <label>Опис</label><textarea class="s" rows="3">${esc(it.desc)}</textarea>
+    <label>Колір</label><div class="cols"></div>
+    <label>Фото</label><div class="ph"></div>
+    <input type="file" class="f" accept="image/*" multiple style="margin-top:6px">
+    <div class="row"><button class="ok">Зберегти</button><button class="del">Видалити</button></div>`;
+  const colsEl=d.querySelector('.cols');
+  COLORS.forEach(c=>{
+    const b=document.createElement('span');
+    b.style.cssText=`display:inline-block;width:22px;height:22px;margin:2px;border-radius:50%;background:${c};border:2px solid ${c===it.color?'#1a73e8':'#999'};cursor:pointer`;
+    b.onclick=()=>{it.color=c;[...colsEl.children].forEach(x=>x.style.borderColor='#999');b.style.borderColor='#1a73e8';};
+    colsEl.appendChild(b);
+  });
+  const ph=d.querySelector('.ph');
+  const drawPh=()=>{ph.innerHTML='';(it.photos||[]).forEach((p,i)=>{
+    const w=document.createElement('div');
+    w.innerHTML=`<img src="${p}"><button class="x">✕</button>`;
+    w.querySelector('.x').onclick=()=>{it.photos.splice(i,1);drawPh();};
+    ph.appendChild(w);});};
+  drawPh();
+  d.querySelector('.f').onchange=async e=>{
+    it.photos=it.photos||[];
+    for(const f of e.target.files) it.photos.push(await shrink(f));
+    drawPh(); e.target.value='';
+  };
+  d.querySelector('.ok').onclick=()=>{
+    it.title=d.querySelector('.t').value; it.desc=d.querySelector('.s').value;
+    saveDraft(); render(); map.closePopup();
+  };
+  d.querySelector('.del').onclick=()=>{
+    if(!confirm('Видалити об\'єкт?'))return;
+    items=items.filter(x=>x!==it); saveDraft(); render(); map.closePopup();
+  };
+  return d;
+}
+function shrink(file,max=1000,q=.75){
+  return new Promise(res=>{
+    const r=new FileReader();
+    r.onload=()=>{const im=new Image();im.onload=()=>{
+      const k=Math.min(1,max/Math.max(im.width,im.height));
+      const c=document.createElement('canvas');c.width=im.width*k;c.height=im.height*k;
+      c.getContext('2d').drawImage(im,0,0,c.width,c.height);
+      res(c.toDataURL('image/jpeg',q));};im.src=r.result;};
+    r.readAsDataURL(file);
+  });
+}
+
+/* ===== ІНСТРУМЕНТИ МАЛЮВАННЯ ===== */
+function enableDraw(){
+  drawCtl=new L.Control.Draw({
+    position:'topleft',
+    draw:{rectangle:false,circle:false,circlemarker:false,
+      polygon:{allowIntersection:false,showArea:false,shapeOptions:{color:COLORS[4]}},
+      polyline:{shapeOptions:{color:COLORS[4]}},
+      marker:{icon:pinIcon(COLORS[0])}},
+    edit:{featureGroup:store}
+  });
+  map.addControl(drawCtl);
+}
+map.on(L.Draw.Event.CREATED,e=>{
+  const type=e.layerType==='marker'?'marker':e.layerType==='polygon'?'polygon':'polyline';
+  const it={id:uid(),type,coords:coordsOf(e.layer),title:'',desc:'',color:type==='marker'?COLORS[0]:COLORS[4],photos:[]};
+  items.push(it); saveDraft(); render();
+  store.eachLayer(l=>{if(l._id===it.id)l.openPopup();});
+});
+map.on(L.Draw.Event.EDITED,e=>{
+  e.layers.eachLayer(l=>{const it=items.find(x=>x.id===l._id);if(it)it.coords=coordsOf(l);});
+  saveDraft();
+});
+map.on(L.Draw.Event.DELETED,e=>{
+  e.layers.eachLayer(l=>{items=items.filter(x=>x.id!==l._id);});
+  saveDraft(); render();
+});
+
+/* ===== ДАНІ ===== */
+function saveDraft(){
+  try{localStorage.setItem(DRAFT_KEY,JSON.stringify(items));}
+  catch(e){alert('Чернетка завелика для браузера. Зробіть Експорт data.json і зменшіть кількість фото.');}
+}
+async function loadData(){
+  let pub=[];
+  try{const r=await fetch(DATA_FILE+'?t='+Date.now());if(r.ok)pub=await r.json();}catch(e){}
+  items=pub;
+  if(isAdmin){
+    const d=localStorage.getItem(DRAFT_KEY);
+    if(d){try{items=JSON.parse(d);}catch(e){}}
+  }
+  render();
+}
+document.getElementById('btnExport').onclick=()=>{
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(new Blob([JSON.stringify(items)],{type:'application/json'}));
+  a.download='data.json';a.click();
+  alert('Файл data.json завантажено.\nЗавантажте його в корінь репозиторію GitHub (Add file → Upload files), щоб його бачили всі відвідувачі.');
+};
+document.getElementById('fileImport').onchange=async e=>{
+  const f=e.target.files[0];if(!f)return;
+  try{items=JSON.parse(await f.text());saveDraft();render();}catch(x){alert('Невірний файл');}
+  e.target.value='';
+};
+document.getElementById('btnReset').onclick=async()=>{
+  if(!confirm('Скинути чернетку і повернутись до опублікованої версії?'))return;
+  localStorage.removeItem(DRAFT_KEY);await loadData();
+};
+
+/* ===== ВХІД ===== */
+async function sha(s){
+  const b=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(s));
+  return [...new Uint8Array(b)].map(x=>x.toString(16).padStart(2,'0')).join('');
+}
+async function start(admin){
+  isAdmin=admin;
+  document.getElementById('login').hidden=true;
+  document.getElementById('bar').hidden=false;
+  document.getElementById('badge').textContent=admin?'👑 Адмін':'👁 Відвідувач';
+  ['btnExport','lblImport','btnReset'].forEach(id=>document.getElementById(id).hidden=!admin);
+  if(admin&&!drawCtl)enableDraw();
+  await loadData();
+}
+document.getElementById('btnAdmin').onclick=async()=>{
+  const v=document.getElementById('code').value;
+  if(await sha(v)===ADMIN_HASH){sessionStorage.setItem('role','admin');start(true);}
+  else document.getElementById('err').textContent='Невірний код';
+};
+document.getElementById('code').onkeydown=e=>{if(e.key==='Enter')document.getElementById('btnAdmin').click();};
+document.getElementById('btnGuest').onclick=()=>{sessionStorage.setItem('role','guest');start(false);};
+document.getElementById('btnLogout').onclick=()=>{sessionStorage.removeItem('role');location.reload();};
+const role=sessionStorage.getItem('role');
+if(role==='admin')start(true);else if(role==='guest')start(false);
+
+/* ===== Збільшення фото ===== */
+const lb=document.getElementById('lb');
+document.addEventListener('click',e=>{
+  if(e.target.matches('.view img,.ph img')){lb.querySelector('img').src=e.target.src;lb.style.display='flex';}
+  else if(lb.contains(e.target)||e.target===lb)lb.style.display='none';
+});
+</script>
+</body>
+</html>
