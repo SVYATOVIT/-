@@ -8,6 +8,7 @@
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.css">
 <style>
   *{box-sizing:border-box}
+  [hidden]{display:none !important}
   html,body{height:100%;margin:0;font-family:system-ui,Segoe UI,Arial,sans-serif}
   #map{height:100%;width:100%;background:#111}
   #login{position:fixed;inset:0;z-index:3000;background:rgba(10,15,25,.92);display:flex;align-items:center;justify-content:center}
@@ -16,7 +17,7 @@
   .box p{color:#666;margin:0 0 18px;font-size:14px}
   .box input{width:100%;padding:10px;border:1px solid #bbb;border-radius:8px;font-size:15px;margin-bottom:10px}
   button,.btn{cursor:pointer;border:0;border-radius:8px;padding:10px 14px;font-size:14px;background:#1a73e8;color:#fff}
-  button.sec{background:#e8eaed;color:#222}
+  button.sec,.btn.sec{background:#e8eaed;color:#222}
   .box button{width:100%;margin-top:6px}
   #err{color:#c62828;font-size:13px;min-height:18px}
   #bar{position:absolute;z-index:1000;top:10px;left:56px;right:10px;display:flex;gap:8px;flex-wrap:wrap;pointer-events:none}
@@ -67,7 +68,7 @@
 <script>
 /* ===== НАЛАШТУВАННЯ ===== */
 // SHA-256 хеш коду адміна. Зараз код: admin123
-// Щоб змінити: у консолі браузера виконайте
+// Щоб змінити: у консолі браузера (F12) виконайте
 //   crypto.subtle.digest('SHA-256',new TextEncoder().encode('НОВИЙ_КОД')).then(b=>console.log([...new Uint8Array(b)].map(x=>x.toString(16).padStart(2,'0')).join('')))
 // і вставте результат нижче.
 const ADMIN_HASH = '240be518fabd2724ddb6f04eeb1da5967448d7e831c08c8fa822809f74c720a9';
