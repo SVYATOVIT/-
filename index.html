@@ -3,66 +3,80 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Супутникова карта</title>
+<title>Карта</title>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@geoman-io/leaflet-geoman-free@2.17.0/dist/leaflet-geoman.css">
 <style>
   *{box-sizing:border-box}
   [hidden]{display:none !important}
-  :root{--blue:#2563eb;--bg:#fff;--line:#e5e7eb;--txt:#111827;--mut:#6b7280}
-  html,body{height:100%;margin:0;font-family:system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif;color:var(--txt)}
-  #map{height:100%;width:100%;background:#0b1220}
-  button{font:inherit;cursor:pointer;border:0;border-radius:10px;padding:9px 14px;background:var(--blue);color:#fff;font-size:14px;font-weight:500}
+  :root{--blue:#1a73e8;--line:#e5e7eb;--txt:#202124;--mut:#5f6368}
+  html,body{height:100%;margin:0;font-family:Roboto,system-ui,-apple-system,"Segoe UI",Arial,sans-serif;color:var(--txt)}
+  #map{height:100%;width:100%;background:#e5e3df}
+  button{font:inherit;cursor:pointer;border:0;border-radius:8px;padding:8px 14px;background:var(--blue);color:#fff;font-size:14px;font-weight:500}
   button:hover{filter:brightness(1.08)}
-  button.sec{background:#f3f4f6;color:var(--txt)}
-  button.danger{background:#ef4444}
+  button.sec{background:#f1f3f4;color:var(--txt)}
+  button.danger{background:#d93025}
+  .shadow{box-shadow:0 1px 4px rgba(60,64,67,.4),0 2px 10px rgba(60,64,67,.15)}
 
   /* Вхід */
-  #login{position:fixed;inset:0;z-index:3000;display:flex;align-items:center;justify-content:center;
-    background:linear-gradient(135deg,#0f172a,#1e3a8a)}
-  .card{background:#fff;padding:32px 28px;border-radius:18px;width:min(360px,92vw);text-align:center;box-shadow:0 20px 60px rgba(0,0,0,.4)}
+  #login{position:fixed;inset:0;z-index:3000;display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,#1a73e8,#0b3d91)}
+  .card{background:#fff;padding:32px 28px;border-radius:16px;width:min(360px,92vw);text-align:center;box-shadow:0 20px 60px rgba(0,0,0,.35)}
   .card h1{font-size:22px;margin:0 0 4px}
   .card p{color:var(--mut);margin:0 0 20px;font-size:14px}
-  .card input{width:100%;padding:12px;border:1px solid var(--line);border-radius:10px;font-size:15px;margin-bottom:6px;outline:none}
-  .card input:focus{border-color:var(--blue)}
+  .card input{width:100%;padding:12px;border:1px solid #dadce0;border-radius:8px;font-size:15px;margin-bottom:6px;outline:none}
+  .card input:focus{border-color:var(--blue);box-shadow:0 0 0 2px #d2e3fc}
   .card button{width:100%;margin-top:8px;padding:12px}
-  #err{color:#dc2626;font-size:13px;min-height:18px}
+  #err{color:#d93025;font-size:13px;min-height:18px}
 
-  /* Верхня панель */
-  #bar{position:absolute;z-index:1000;top:12px;left:64px;right:64px;display:flex;gap:8px;flex-wrap:wrap;justify-content:center;pointer-events:none}
-  #bar>*{pointer-events:auto}
-  .pill{background:var(--bg);border-radius:12px;padding:6px;display:flex;gap:6px;align-items:center;box-shadow:0 2px 12px rgba(0,0,0,.25)}
-  .pill .badge{padding:0 10px;font-size:14px;font-weight:600}
-  .pill button{padding:8px 12px}
-  .pill button.on{background:var(--blue);color:#fff}
-  .lblimp{display:inline-block;cursor:pointer;border-radius:10px;padding:8px 12px;background:#f3f4f6;font-size:14px;font-weight:500}
+  /* Пошук */
+  #search{position:absolute;z-index:1000;top:12px;left:12px;width:min(360px,calc(100% - 24px));display:flex;align-items:center;background:#fff;border-radius:24px;padding:4px 6px 4px 16px}
+  #search input{flex:1;border:0;outline:none;font-size:15px;padding:9px 0;background:transparent;min-width:0}
+  #search button{background:transparent;color:var(--blue);font-size:18px;padding:6px 10px}
 
-  /* Редактор / перегляд */
-  .leaflet-popup-content-wrapper{border-radius:14px}
+  /* Панель адміна */
+  #bar{position:absolute;z-index:1000;top:12px;right:12px;display:flex;gap:6px;background:#fff;border-radius:12px;padding:6px;align-items:center;flex-wrap:wrap}
+  #bar .badge{padding:0 8px;font-size:13px;font-weight:600;color:var(--mut)}
+  #bar button{padding:8px 12px}
+  #bar button.on{background:var(--blue);color:#fff}
+  #btnPub.dirty{background:#f9ab00;color:#202124}
+  @media(max-width:900px){#bar{top:64px;left:60px;right:12px}}
+  .leaflet-top.leaflet-left{margin-top:64px}
+
+  /* Шари */
+  #layers{position:absolute;z-index:1000;left:12px;bottom:28px;background:#fff;border-radius:12px;padding:8px;max-width:270px}
+  #layers .seg{display:flex;gap:6px}
+  #layers .seg button{flex:1;background:#f1f3f4;color:var(--txt)}
+  #layers .seg button.on{background:#d2e3fc;color:#174ea6}
+  #layers label{display:flex;gap:8px;align-items:flex-start;font-size:13px;margin-top:8px;cursor:pointer;line-height:1.3}
+  #layers .sq{display:inline-block;width:14px;height:14px;background:#dc2626;opacity:.6;border:1px solid #991b1b;border-radius:3px;flex:none;margin-top:1px}
+  #layers small{color:var(--mut)}
+
+  /* Попапи */
+  .leaflet-popup-content-wrapper{border-radius:12px}
   .leaflet-popup-content{margin:14px 16px;min-width:230px;max-height:60vh;overflow:auto}
   .view h3{margin:0 0 6px;font-size:17px}
-  .view p{margin:0;white-space:pre-wrap;color:#374151;line-height:1.4}
+  .view p{margin:0;white-space:pre-wrap;color:#3c4043;line-height:1.4}
   .ed label{display:block;font-size:12px;font-weight:600;color:var(--mut);margin:10px 0 4px}
-  .ed input[type=text],.ed textarea,.ed select{width:100%;padding:8px 10px;border:1px solid var(--line);border-radius:8px;font:inherit;outline:none}
+  .ed input[type=text],.ed textarea,.ed select{width:100%;padding:8px 10px;border:1px solid #dadce0;border-radius:8px;font:inherit;outline:none}
   .ed input:focus,.ed textarea:focus{border-color:var(--blue)}
   .ed input[type=range]{width:100%}
   .ed .row{display:flex;gap:8px;margin-top:14px}
   .ed .row button{flex:1}
-  .sw{display:inline-block;width:24px;height:24px;margin:2px;border-radius:50%;cursor:pointer;border:3px solid transparent;box-shadow:0 0 0 1px #9ca3af}
+  .sw{display:inline-block;width:24px;height:24px;margin:2px;border-radius:50%;cursor:pointer;border:3px solid transparent;box-shadow:0 0 0 1px #9aa0a6}
   .sw.sel{border-color:#fff;box-shadow:0 0 0 2px var(--blue)}
 
-  /* Маркери і підписи */
-  .pin{width:22px;height:22px;border-radius:50% 50% 50% 0;transform:rotate(-45deg);border:2px solid #fff;box-shadow:0 1px 5px rgba(0,0,0,.6)}
-  .lbl{transform:translate(-50%,-50%);white-space:nowrap;font-weight:700;
-    text-shadow:0 0 3px #000,0 0 3px #000,0 0 6px #000;cursor:default}
+  .pin{width:22px;height:22px;border-radius:50% 50% 50% 0;transform:rotate(-45deg);border:2px solid #fff;box-shadow:0 1px 5px rgba(0,0,0,.5)}
+  .lbl{transform:translate(-50%,-50%);white-space:nowrap;font-weight:700;text-shadow:0 0 3px #000,0 0 3px #000,0 0 6px #000}
   body.texting #map{cursor:crosshair}
+  #toast{position:fixed;left:50%;bottom:30px;transform:translateX(-50%);z-index:5000;background:#323232;color:#fff;padding:12px 18px;border-radius:8px;font-size:14px;max-width:90vw}
+  #toast.err{background:#d93025}
 </style>
 </head>
 <body>
 
 <div id="login">
   <div class="card">
-    <h1>🗺️ Супутникова карта</h1>
+    <h1>🗺️ Карта</h1>
     <p>Росія та Україна</p>
     <input id="code" type="password" placeholder="Код адміністратора">
     <div id="err"></div>
@@ -73,84 +87,121 @@
 
 <div id="map"></div>
 
-<div id="bar" hidden>
-  <div class="pill"><span class="badge" id="badge"></span></div>
-  <div class="pill" id="adminTools" hidden>
+<div id="search" class="shadow" hidden>
+  <input id="q" placeholder="Пошук місця">
+  <button id="btnQ" title="Шукати">🔍</button>
+</div>
+
+<div id="bar" class="shadow" hidden>
+  <span class="badge" id="badge"></span>
+  <span id="adminTools" style="display:contents">
     <button id="btnText" class="sec">Аа Текст</button>
-    <button id="btnExport" class="sec">⬇ Зберегти data.json</button>
-    <label class="lblimp">⬆ Імпорт<input id="fileImport" type="file" accept=".json" hidden></label>
-    <button id="btnReset" class="sec">↺ Скинути</button>
-  </div>
-  <div class="pill"><button id="btnLogout" class="sec">Вийти</button></div>
+    <button id="btnPub">💾 Опублікувати</button>
+    <button id="btnReset" class="sec" title="Скинути чернетку">↺</button>
+  </span>
+  <button id="btnLogout" class="sec">Вийти</button>
+</div>
+
+<div id="layers" class="shadow" hidden>
+  <div class="seg"><button id="bMap" class="on">Карта</button><button id="bSat">Супутник</button></div>
+  <label><input type="checkbox" id="chkOcc" checked><span class="sq"></span>
+    <span>Тимчасово окуповані території<br><small id="occInfo">завантаження…</small></span></label>
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@geoman-io/leaflet-geoman-free@2.17.0/dist/leaflet-geoman.min.js"></script>
 <script>
 /* ===== НАЛАШТУВАННЯ ===== */
-// SHA-256 хеш коду адміна. Зараз код: admin123
-// Щоб змінити: F12 → Console, виконайте:
+// Код адміна: хеш SHA-256. Зараз код: admin123
+// Новий хеш: F12 → Console:
 //   crypto.subtle.digest('SHA-256',new TextEncoder().encode('НОВИЙ_КОД')).then(b=>console.log([...new Uint8Array(b)].map(x=>x.toString(16).padStart(2,'0')).join('')))
-// і вставте результат нижче.
 const ADMIN_HASH = '240be518fabd2724ddb6f04eeb1da5967448d7e831c08c8fa822809f74c720a9';
+// Ваш GitHub-репозиторій. Залиште порожніми, якщо сайт на ваш-логін.github.io — визначиться автоматично.
+const GH_OWNER = '';
+const GH_REPO  = '';
 const DATA_FILE = 'data.json';
-const DRAFT_KEY = 'mapDraft_v2';
+const DRAFT_KEY = 'mapDraft_v3', TOKEN_KEY = 'ghToken_v1';
 const COLORS = ['#ef4444','#f97316','#facc15','#22c55e','#3b82f6','#a855f7','#ffffff','#111111'];
 const SIZES = {s:14,m:20,l:30};
 
 /* ===== КАРТА ===== */
-const map = L.map('map',{worldCopyJump:true}).setView([52,50],4);
-const sat = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',{maxZoom:18,attribution:'Esri, Maxar, Earthstar Geographics'});
-const labels = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}',{maxZoom:18});
-const osm = L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'© OpenStreetMap'});
-sat.addTo(map); labels.addTo(map);
-L.control.layers({'Супутник':sat,'Схема':osm},{'Підписи країн і міст':labels},{position:'topright'}).addTo(map);
+const map = L.map('map',{zoomControl:false,worldCopyJump:true}).setView([52,45],4);
+L.control.zoom({position:'bottomright'}).addTo(map);
 L.control.scale({imperial:false}).addTo(map);
+const baseMap = L.tileLayer('https://{s}.basemaps.cartocdn.com/rastered/voyager/{z}/{x}/{y}{r}.png',{maxZoom:19,subdomains:'abcd',attribution:'© OpenStreetMap, © CARTO'});
+const imagery = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',{maxZoom:18,attribution:'Esri, Maxar'});
+const places = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}',{maxZoom:18});
+const satGroup = L.layerGroup([imagery,places]);
+baseMap.addTo(map);
+function setBase(sat){
+  if(sat){map.removeLayer(baseMap);satGroup.addTo(map);}else{map.removeLayer(satGroup);baseMap.addTo(map);}
+  bMap.classList.toggle('on',!sat);bSat.classList.toggle('on',sat);
+}
+const bMap=document.getElementById('bMap'),bSat=document.getElementById('bSat');
+bMap.onclick=()=>setBase(false);bSat.onclick=()=>setBase(true);
 
-const store = new L.FeatureGroup().addTo(map);
-let items = [], isAdmin = false, textMode = false;
-const uid = () => Math.random().toString(36).slice(2,10);
-const esc = s => String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+/* ===== ОКУПОВАНІ ТЕРИТОРІЇ (DeepState) ===== */
+map.createPane('occ').style.zIndex=390;
+const occLayer=L.geoJSON(null,{pane:'occ',interactive:false,
+  style:{color:'#991b1b',weight:1.2,fillColor:'#dc2626',fillOpacity:.38}}).addTo(map);
+document.getElementById('chkOcc').onchange=e=>{e.target.checked?occLayer.addTo(map):map.removeLayer(occLayer);};
+const occInfo=document.getElementById('occInfo');
+function showOcc(gj,label){occLayer.clearLayers();occLayer.addData(gj);occInfo.textContent='Дані: DeepState · '+label;}
+async function loadOccupied(){
+  const REPO='https://raw.githubusercontent.com/cyterat/deepstate-map-data/main/data/deepstatemap_data_';
+  const now=Date.now();
+  for(let i=0;i<10;i++){
+    const t=new Date(now-i*864e5),y=t.getUTCFullYear(),m=String(t.getUTCMonth()+1).padStart(2,'0'),d=String(t.getUTCDate()).padStart(2,'0');
+    for(const n of [`${y}${m}${d}`,`${y}-${m}-${d}`]){
+      try{const r=await fetch(`${REPO}${n}.geojson`);if(r.ok){showOcc(await r.json(),`${d}.${m}.${y}`);return;}}catch(e){}
+    }
+  }
+  try{ // запасний варіант: останній файл зі списку
+    const l=await (await fetch('https://api.github.com/repos/cyterat/deepstate-map-data/contents/data')).json();
+    const f=l.filter(x=>/\.geojson$/.test(x.name)).sort((a,b)=>a.name<b.name?-1:1).pop();
+    const r=await fetch(f.download_url);showOcc(await r.json(),(f.name.match(/\d{4}-?\d{2}-?\d{2}/)||[''])[0]);return;
+  }catch(e){}
+  try{ // запасний варіант: офіційний API DeepState
+    const j=await (await fetch('https://deepstatemap.live/api/history/last')).json();
+    const fe=j.map.features.filter(x=>/Polygon/.test(x.geometry.type)&&/occupied|окупов|крим|crimea|ордло/i.test((x.properties||{}).name||''));
+    if(fe.length){showOcc({type:'FeatureCollection',features:fe},'останнє оновлення');return;}
+  }catch(e){}
+  occInfo.textContent='не вдалося завантажити дані';
+}
+loadOccupied();
 
-/* ===== ШАРИ ===== */
+/* ===== ДАНІ ОБ'ЄКТІВ ===== */
+const store=new L.FeatureGroup().addTo(map);
+let items=[],isAdmin=false,textMode=false;
+const uid=()=>Math.random().toString(36).slice(2,10);
+const esc=s=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 function pinIcon(c){return L.divIcon({className:'',html:`<div class="pin" style="background:${c}"></div>`,iconSize:[22,22],iconAnchor:[11,22],popupAnchor:[0,-22]});}
-function textIcon(it){
-  const sz=SIZES[it.size]||SIZES.m;
-  return L.divIcon({className:'',html:`<div class="lbl" style="color:${it.color};font-size:${sz}px">${esc(it.title)||'Текст'}</div>`,iconSize:[0,0]});
+function textIcon(it){return L.divIcon({className:'',html:`<div class="lbl" style="color:${it.color};font-size:${SIZES[it.size]||20}px">${esc(it.title)||'Текст'}</div>`,iconSize:[0,0]});}
+function coordsOf(l){
+  if(l instanceof L.Marker){const p=l.getLatLng();return [p.lat,p.lng];}
+  const f=a=>Array.isArray(a)?a.map(f):[a.lat,a.lng],r=l.getLatLngs();
+  return f(l instanceof L.Polygon?r[0]:r);
 }
 function makeLayer(it){
   let l;
-  if(it.type==='marker') l=L.marker(it.coords,{icon:pinIcon(it.color)});
-  else if(it.type==='text') l=L.marker(it.coords,{icon:textIcon(it)});
-  else if(it.type==='polygon') l=L.polygon(it.coords,{color:it.color,weight:3,fillColor:it.color,fillOpacity:it.fill==null?.3:it.fill});
+  if(it.type==='marker')l=L.marker(it.coords,{icon:pinIcon(it.color)});
+  else if(it.type==='text')l=L.marker(it.coords,{icon:textIcon(it)});
+  else if(it.type==='polygon')l=L.polygon(it.coords,{color:it.color,weight:3,fillColor:it.color,fillOpacity:it.fill==null?.3:it.fill});
   else l=L.polyline(it.coords,{color:it.color,weight:4});
   l._id=it.id;
-  if(it.type!=='text'||isAdmin) l.bindPopup(()=>isAdmin?editor(it):viewer(it),{maxWidth:320});
+  if(it.type!=='text'||isAdmin)l.bindPopup(()=>isAdmin?editor(it):viewer(it),{maxWidth:320});
   const upd=()=>{it.coords=coordsOf(l);saveDraft();};
-  l.on('pm:edit',upd); l.on('pm:dragend',upd);
+  l.on('pm:edit',upd);l.on('pm:dragend',upd);
   return l;
 }
-function render(){
-  store.clearLayers();
-  items.forEach(it=>store.addLayer(makeLayer(it)));
-}
-function coordsOf(l){
-  if(l instanceof L.Marker){const p=l.getLatLng();return [p.lat,p.lng];}
-  const f=a=>Array.isArray(a)?a.map(f):[a.lat,a.lng];
-  const r=l.getLatLngs();
-  return f(l instanceof L.Polygon?r[0]:r);
-}
-
-/* ===== ПЕРЕГЛЯД ===== */
+function render(){store.clearLayers();items.forEach(it=>store.addLayer(makeLayer(it)));}
 function viewer(it){
   const d=document.createElement('div');d.className='view';
   d.innerHTML=`<h3>${esc(it.title)||'Без назви'}</h3>${it.desc?`<p>${esc(it.desc)}</p>`:''}`;
   return d;
 }
-
-/* ===== РЕДАКТОР ===== */
 function editor(it){
-  const isText=it.type==='text', isPoly=it.type==='polygon';
+  const isText=it.type==='text',isPoly=it.type==='polygon';
   const d=document.createElement('div');d.className='ed';
   d.innerHTML=`
     <label>${isText?'Текст':'Назва'}</label>
@@ -161,23 +212,21 @@ function editor(it){
     ${isText?'<label>Розмір</label><select class="size"><option value="s">Малий</option><option value="m">Середній</option><option value="l">Великий</option></select>':''}
     <div class="row"><button class="ok">Зберегти</button><button class="danger del">Видалити</button></div>`;
   d.querySelector('.t').value=it.title||'';
-  if(!isText) d.querySelector('.s').value=it.desc||'';
-  if(isPoly) d.querySelector('.fill').value=it.fill==null?.3:it.fill;
-  if(isText) d.querySelector('.size').value=it.size||'m';
-  const colsEl=d.querySelector('.cols');
-  let color=it.color;
+  if(!isText)d.querySelector('.s').value=it.desc||'';
+  if(isPoly)d.querySelector('.fill').value=it.fill==null?.3:it.fill;
+  if(isText)d.querySelector('.size').value=it.size||'m';
+  let color=it.color;const colsEl=d.querySelector('.cols');
   COLORS.forEach(c=>{
-    const b=document.createElement('span');
-    b.className='sw'+(c===color?' sel':'');b.style.background=c;
+    const b=document.createElement('span');b.className='sw'+(c===color?' sel':'');b.style.background=c;
     b.onclick=()=>{color=c;[...colsEl.children].forEach(x=>x.classList.remove('sel'));b.classList.add('sel');};
     colsEl.appendChild(b);
   });
   d.querySelector('.ok').onclick=()=>{
     it.title=d.querySelector('.t').value;
-    if(!isText) it.desc=d.querySelector('.s').value;
+    if(!isText)it.desc=d.querySelector('.s').value;
     it.color=color;
-    if(isPoly) it.fill=parseFloat(d.querySelector('.fill').value);
-    if(isText) it.size=d.querySelector('.size').value;
+    if(isPoly)it.fill=parseFloat(d.querySelector('.fill').value);
+    if(isText)it.size=d.querySelector('.size').value;
     saveDraft();map.closePopup();render();
   };
   d.querySelector('.del').onclick=()=>{
@@ -187,79 +236,122 @@ function editor(it){
   return d;
 }
 
-/* ===== МАЛЮВАННЯ (Geoman) ===== */
+/* ===== МАЛЮВАННЯ ===== */
 function enableTools(){
-  map.pm.setLang('ua');
-  map.pm.setPathOptions({color:'#3b82f6',fillColor:'#3b82f6',fillOpacity:.3});
-  map.pm.addControls({
-    position:'topleft',
-    drawMarker:true,drawPolygon:true,drawPolyline:true,drawRectangle:true,
-    drawCircle:false,drawCircleMarker:false,drawText:false,
-    editMode:true,dragMode:true,cutPolygon:false,removalMode:true,rotateMode:false
-  });
+  try{map.pm.setLang('ua');}catch(e){}
+  map.pm.setPathOptions({color:'#1a73e8',fillColor:'#1a73e8',fillOpacity:.3});
+  map.pm.addControls({position:'topleft',drawMarker:true,drawPolygon:true,drawPolyline:true,drawRectangle:true,
+    drawCircle:false,drawCircleMarker:false,drawText:false,editMode:true,dragMode:true,cutPolygon:false,removalMode:true,rotateMode:false});
 }
 function addItem(type,coords){
-  const it={id:uid(),type,coords,title:'',desc:'',
-    color:type==='marker'?COLORS[0]:type==='text'?COLORS[6]:COLORS[4],fill:.3,size:'m'};
+  const it={id:uid(),type,coords,title:'',desc:'',color:type==='marker'?COLORS[0]:type==='text'?COLORS[6]:COLORS[4],fill:.3,size:'m'};
   items.push(it);saveDraft();render();
   store.eachLayer(l=>{if(l._id===it.id)l.openPopup();});
 }
 map.on('pm:create',e=>{
-  const sh=e.shape,l=e.layer,c=coordsOf(l);
-  l.remove();
-  const type=sh==='Marker'?'marker':(sh==='Polygon'||sh==='Rectangle')?'polygon':'line';
-  addItem(type,c);
+  const sh=e.shape,c=coordsOf(e.layer);e.layer.remove();
+  addItem(sh==='Marker'?'marker':(sh==='Polygon'||sh==='Rectangle')?'polygon':'line',c);
 });
-map.on('pm:remove',e=>{
-  if(e.layer&&e.layer._id){items=items.filter(x=>x.id!==e.layer._id);saveDraft();}
-});
-
-/* Інструмент "Текст" */
+map.on('pm:remove',e=>{if(e.layer&&e.layer._id){items=items.filter(x=>x.id!==e.layer._id);saveDraft();}});
 const btnText=document.getElementById('btnText');
-function setTextMode(on){
-  textMode=on;btnText.classList.toggle('on',on);btnText.classList.toggle('sec',!on);
-  document.body.classList.toggle('texting',on);
-}
+function setTextMode(on){textMode=on;btnText.classList.toggle('on',on);btnText.classList.toggle('sec',!on);document.body.classList.toggle('texting',on);}
 btnText.onclick=()=>{
   if(!textMode){map.pm.disableDraw();map.pm.disableGlobalEditMode();map.pm.disableGlobalRemovalMode();}
   setTextMode(!textMode);
 };
-map.on('click',e=>{
-  if(!textMode)return;
-  setTextMode(false);
-  addItem('text',[e.latlng.lat,e.latlng.lng]);
-});
+map.on('click',e=>{if(!textMode)return;setTextMode(false);addItem('text',[e.latlng.lat,e.latlng.lng]);});
 
-/* ===== ДАНІ ===== */
+/* ===== ЗБЕРЕЖЕННЯ І ПУБЛІКАЦІЯ ===== */
+const btnPub=document.getElementById('btnPub');
+function toast(msg,err){
+  let t=document.getElementById('toast');
+  if(!t){t=document.createElement('div');t.id='toast';document.body.appendChild(t);}
+  t.textContent=msg;t.className=err?'err':'';t.hidden=false;
+  clearTimeout(t._h);t._h=setTimeout(()=>t.hidden=true,err?8000:4000);
+}
+function refreshDirty(){
+  const dirty=!!localStorage.getItem(DRAFT_KEY);
+  btnPub.classList.toggle('dirty',dirty);
+  btnPub.textContent=dirty?'💾 Опублікувати •':'💾 Опублікувати';
+}
 function saveDraft(){
-  try{localStorage.setItem(DRAFT_KEY,JSON.stringify(items));}
-  catch(e){alert('Не вдалося зберегти чернетку в браузері.');}
+  try{localStorage.setItem(DRAFT_KEY,JSON.stringify(items));}catch(e){}
+  refreshDirty();
+}
+function ghRepo(){
+  if(GH_OWNER&&GH_REPO)return [GH_OWNER,GH_REPO];
+  const h=location.hostname;
+  if(h.endsWith('.github.io')){
+    const p=location.pathname.split('/')[1];
+    return [h.split('.')[0],(p&&!p.includes('.'))?p:h];
+  }
+  return null;
+}
+async function fetchPublished(){
+  const r=ghRepo();
+  if(r){
+    try{
+      const res=await fetch(`https://api.github.com/repos/${r[0]}/${r[1]}/contents/${DATA_FILE}`,
+        {headers:{Accept:'application/vnd.github.raw+json'},cache:'no-store'});
+      if(res.ok)return await res.json();
+    }catch(e){}
+  }
+  try{const res=await fetch(DATA_FILE+'?t='+Date.now());if(res.ok)return await res.json();}catch(e){}
+  return [];
 }
 async function loadData(){
-  let pub=[];
-  try{const r=await fetch(DATA_FILE+'?t='+Date.now());if(r.ok)pub=await r.json();}catch(e){}
+  const pub=await fetchPublished();
   items=Array.isArray(pub)?pub:[];
   if(isAdmin){
     const d=localStorage.getItem(DRAFT_KEY);
     if(d){try{items=JSON.parse(d);}catch(e){}}
+    refreshDirty();
   }
   render();
 }
-document.getElementById('btnExport').onclick=()=>{
-  const a=document.createElement('a');
-  a.href=URL.createObjectURL(new Blob([JSON.stringify(items)],{type:'application/json'}));
-  a.download='data.json';a.click();
-  alert('Файл data.json завантажено.\n\nЩоб його бачили всі відвідувачі, завантажте його в корінь репозиторію GitHub (Add file → Upload files).');
-};
-document.getElementById('fileImport').onchange=async e=>{
-  const f=e.target.files[0];if(!f)return;
-  try{items=JSON.parse(await f.text());saveDraft();render();}catch(x){alert('Невірний файл');}
-  e.target.value='';
+btnPub.onclick=async()=>{
+  const r=ghRepo();
+  if(!r){alert('Не вдалося визначити репозиторій. Впишіть GH_OWNER і GH_REPO на початку скрипта.');return;}
+  let tk=localStorage.getItem(TOKEN_KEY);
+  if(!tk){
+    tk=prompt('Вставте GitHub-токен (fine-grained, доступ Contents: Read and write до цього репозиторію).\nВін збережеться тільки у вашому браузері:');
+    if(!tk)return;tk=tk.trim();localStorage.setItem(TOKEN_KEY,tk);
+  }
+  const url=`https://api.github.com/repos/${r[0]}/${r[1]}/contents/${DATA_FILE}`;
+  const H={Authorization:'Bearer '+tk,Accept:'application/vnd.github+json'};
+  toast('Публікація…');
+  try{
+    let sha;
+    const g=await fetch(url,{headers:H,cache:'no-store'});
+    if(g.status===200)sha=(await g.json()).sha;else if(g.status!==404)throw g.status;
+    const body={message:'Оновлення карти',content:btoa(unescape(encodeURIComponent(JSON.stringify(items)))),sha};
+    const p=await fetch(url,{method:'PUT',headers:H,body:JSON.stringify(body)});
+    if(!p.ok)throw p.status;
+    localStorage.removeItem(DRAFT_KEY);refreshDirty();
+    toast('✅ Опубліковано! Відвідувачі бачать зміни одразу.');
+  }catch(e){
+    if(e===401||e===403||e===404)localStorage.removeItem(TOKEN_KEY);
+    toast('❌ Помилка '+e+'. Перевірте токен: потрібен доступ Contents: Read and write до цього репозиторію. Спробуйте ще раз.',true);
+  }
 };
 document.getElementById('btnReset').onclick=async()=>{
-  if(!confirm('Скинути чернетку і повернутись до опублікованої версії?'))return;
-  localStorage.removeItem(DRAFT_KEY);await loadData();
+  if(!confirm('Скинути неопубліковані зміни і повернутись до опублікованої версії?'))return;
+  localStorage.removeItem(DRAFT_KEY);await loadData();refreshDirty();
 };
+
+/* ===== ПОШУК ===== */
+async function doSearch(){
+  const q=document.getElementById('q').value.trim();if(!q)return;
+  try{
+    const r=await fetch('https://nominatim.openstreetmap.org/search?format=json&limit=1&accept-language=uk&q='+encodeURIComponent(q));
+    const j=await r.json();
+    if(!j.length){toast('Нічого не знайдено',true);return;}
+    const b=j[0].boundingbox.map(Number);
+    map.flyToBounds([[b[0],b[2]],[b[1],b[3]]],{maxZoom:15});
+  }catch(e){toast('Помилка пошуку',true);}
+}
+document.getElementById('btnQ').onclick=doSearch;
+document.getElementById('q').onkeydown=e=>{if(e.key==='Enter')doSearch();};
 
 /* ===== ВХІД ===== */
 async function sha(s){
@@ -269,15 +361,14 @@ async function sha(s){
 async function start(admin){
   isAdmin=admin;
   document.getElementById('login').hidden=true;
-  document.getElementById('bar').hidden=false;
+  ['search','bar','layers'].forEach(id=>document.getElementById(id).hidden=false);
   document.getElementById('badge').textContent=admin?'👑 Адмін':'👁 Відвідувач';
   document.getElementById('adminTools').hidden=!admin;
   if(admin)enableTools();
   await loadData();
 }
 document.getElementById('btnAdmin').onclick=async()=>{
-  const v=document.getElementById('code').value;
-  if(await sha(v)===ADMIN_HASH){sessionStorage.setItem('role','admin');start(true);}
+  if(await sha(document.getElementById('code').value)===ADMIN_HASH){sessionStorage.setItem('role','admin');start(true);}
   else document.getElementById('err').textContent='Невірний код';
 };
 document.getElementById('code').onkeydown=e=>{if(e.key==='Enter')document.getElementById('btnAdmin').click();};
