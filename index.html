@@ -9,72 +9,115 @@
 <style>
   *{box-sizing:border-box}
   [hidden]{display:none !important}
-  :root{--blue:#1a73e8;--mut:#5f6368;--txt:#202124}
-  html,body{height:100%;margin:0;font-family:Roboto,system-ui,-apple-system,"Segoe UI",Arial,sans-serif;color:var(--txt)}
+  :root{--blue:#1a73e8;--blue-l:#e8f0fe;--mut:#5f6368;--txt:#202124;--line:#e8eaed;--sh:0 1px 3px rgba(60,64,67,.3),0 4px 14px rgba(60,64,67,.15)}
+  html,body{height:100%;margin:0;font-family:Roboto,system-ui,-apple-system,"Segoe UI",Arial,sans-serif;color:var(--txt);-webkit-tap-highlight-color:transparent}
   #map{height:100%;width:100%;background:#e5e3df}
-  button,.btn{font:inherit;cursor:pointer;border:0;border-radius:8px;padding:8px 12px;background:var(--blue);color:#fff;font-size:14px;font-weight:500;display:inline-block}
-  button:hover,.btn:hover{filter:brightness(1.08)}
+  button{font:inherit;cursor:pointer;border:0;border-radius:10px;padding:9px 14px;background:var(--blue);color:#fff;font-size:14px;font-weight:500;line-height:1.2;transition:filter .15s,background .15s}
+  button:hover{filter:brightness(1.07)}
+  button:active{transform:scale(.98)}
+  .ib{background:#fff;color:var(--txt);box-shadow:inset 0 0 0 1px var(--line)}
+  .ib:hover{background:#f1f3f4;filter:none}
+  .ib.on{background:var(--blue);color:#fff;box-shadow:none}
   .sec{background:#f1f3f4;color:var(--txt)}
   .danger{background:#d93025}
-  .shadow{box-shadow:0 1px 4px rgba(60,64,67,.4),0 2px 10px rgba(60,64,67,.15)}
+  .shadow{box-shadow:var(--sh)}
+  input,textarea,select{font-size:16px}
 
-  #login{position:fixed;inset:0;z-index:3000;display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,#1a73e8,#0b3d91)}
-  .card{background:#fff;padding:32px 28px;border-radius:16px;width:min(360px,92vw);text-align:center;box-shadow:0 20px 60px rgba(0,0,0,.35)}
+  /* Вхід */
+  #login{position:fixed;inset:0;z-index:3000;display:flex;align-items:center;justify-content:center;background:radial-gradient(circle at 20% 20%,#3b82f6,transparent 50%),linear-gradient(135deg,#1a73e8,#0b2f6b)}
+  .card{background:#fff;padding:34px 28px 28px;border-radius:20px;width:min(380px,92vw);text-align:center;box-shadow:0 24px 70px rgba(0,0,0,.4)}
+  .logo{width:64px;height:64px;margin:0 auto 14px;border-radius:50%;background:var(--blue-l);display:flex;align-items:center;justify-content:center;font-size:32px}
   .card h1{font-size:22px;margin:0 0 4px}
-  .card p{color:var(--mut);margin:0 0 20px;font-size:14px}
-  .card input{width:100%;padding:12px;border:1px solid #dadce0;border-radius:8px;font-size:15px;margin-bottom:6px;outline:none}
-  .card input:focus{border-color:var(--blue);box-shadow:0 0 0 2px #d2e3fc}
-  .card button{width:100%;margin-top:8px;padding:12px}
+  .card p{color:var(--mut);margin:0 0 22px;font-size:14px}
+  .card input{width:100%;padding:13px 14px;border:1px solid #dadce0;border-radius:12px;margin-bottom:6px;outline:none}
+  .card input:focus{border-color:var(--blue);box-shadow:0 0 0 3px #d2e3fc}
+  .card button{width:100%;margin-top:8px;padding:13px;border-radius:12px}
   #err{color:#d93025;font-size:13px;min-height:18px}
 
-  #search{position:absolute;z-index:1000;top:12px;left:12px;width:min(360px,calc(100% - 24px));display:flex;align-items:center;background:#fff;border-radius:24px;padding:4px 6px 4px 16px}
-  #search input{flex:1;border:0;outline:none;font-size:15px;padding:9px 0;background:transparent;min-width:0}
-  #search button{background:transparent;color:var(--blue);font-size:18px;padding:6px 10px}
+  /* Пошук */
+  #search{position:absolute;z-index:1000;top:12px;left:12px;width:min(360px,calc(100% - 24px));display:flex;align-items:center;background:#fff;border-radius:26px;padding:3px 6px 3px 18px}
+  #search input{flex:1;border:0;outline:none;padding:10px 0;background:transparent;min-width:0}
+  #search button{background:transparent;color:var(--blue);font-size:18px;padding:8px 10px;border-radius:50%}
 
-  #bar{position:absolute;z-index:1000;top:12px;right:12px;display:flex;gap:6px;background:#fff;border-radius:12px;padding:6px;align-items:center;flex-wrap:wrap;max-width:calc(100% - 400px);justify-content:flex-end}
-  #bar .badge{padding:0 8px;font-size:13px;font-weight:600;color:var(--mut)}
-  #bar .on{background:var(--blue);color:#fff}
-  #btnPub.dirty{background:#f9ab00;color:#202124}
-  @media(max-width:900px){#bar{top:64px;left:60px;right:12px;max-width:none}}
+  /* Верхня панель */
+  #bar{position:absolute;z-index:1000;top:12px;right:12px;display:flex;gap:6px;background:#fff;border-radius:14px;padding:6px;align-items:center}
+  .chip{padding:0 8px;font-size:13px;font-weight:600;color:var(--mut);white-space:nowrap}
+  #bar button{padding:9px 12px}
+  #btnPub{position:relative}
+  #btnPub.dirty::after{content:'';position:absolute;top:3px;right:3px;width:10px;height:10px;border-radius:50%;background:#f9ab00;border:2px solid #fff}
+  #menuWrap{position:relative}
+  #menu{position:absolute;top:calc(100% + 8px);right:0;min-width:240px;background:#fff;border-radius:14px;padding:6px;z-index:1200}
+  .mi{display:block;width:100%;text-align:left;background:transparent;color:var(--txt);padding:11px 14px;font-size:14px;border-radius:9px;cursor:pointer}
+  .mi:hover{background:#f1f3f4;filter:none}
+
   .leaflet-top.leaflet-left{margin-top:64px}
+  .leaflet-bar{border:0 !important;border-radius:12px !important;box-shadow:var(--sh) !important;overflow:hidden}
+  .leaflet-bar a{border-color:var(--line) !important}
+  .leaflet-pm-toolbar .leaflet-buttons-control-button{width:36px;height:36px}
+  .leaflet-control-scale-line{border-radius:0 0 6px 6px}
 
-  #layers{position:absolute;z-index:1000;left:12px;bottom:28px;background:#fff;border-radius:12px;padding:8px;width:270px}
-  #layers .seg{display:flex;gap:4px}
-  #layers .seg button{flex:1;background:#f1f3f4;color:var(--txt);padding:7px 4px;font-size:13px}
-  #layers .seg button.on{background:#d2e3fc;color:#174ea6}
-  #layers label{display:flex;gap:8px;align-items:flex-start;font-size:13px;margin-top:7px;cursor:pointer;line-height:1.3}
-  #layers small{color:var(--mut)}
-  #lyList{max-height:30vh;overflow:auto;margin-top:4px;border-top:1px solid #eee}
+  /* Шари */
+  #layersWrap{position:absolute;z-index:1000;left:12px;bottom:36px;display:flex;flex-direction:column;align-items:flex-start;gap:8px}
+  #layersPanel{background:#fff;border-radius:16px;padding:14px;width:min(290px,calc(100vw - 24px))}
+  .ttl{font-size:11px;font-weight:700;color:var(--mut);text-transform:uppercase;letter-spacing:.06em;margin:0 0 8px}
+  .basegrid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+  .bt{background:none;color:var(--txt);padding:0;font-size:12px;font-weight:500;text-align:center}
+  .bt:hover{filter:none}
+  .bt i{display:block;height:46px;border-radius:12px;border:2px solid transparent;margin-bottom:4px;box-shadow:inset 0 0 0 1px rgba(0,0,0,.1)}
+  .bt.on i{border-color:var(--blue)}
+  .bt.on{color:var(--blue)}
+  .sect{margin-top:14px;padding-top:12px;border-top:1px solid var(--line)}
+  #lyList{max-height:26vh;overflow:auto}
+  #layersPanel label{display:flex;gap:10px;align-items:center;font-size:14px;padding:5px 0;cursor:pointer;line-height:1.3}
+  #layersPanel input[type=checkbox]{width:18px;height:18px;accent-color:var(--blue);flex:none}
+  #layersPanel small{color:var(--mut)}
+  .fab{width:44px;height:44px;border-radius:12px;font-size:20px;padding:0;background:#fff;color:var(--txt)}
+  .fab:hover{background:#f1f3f4;filter:none}
 
-  #doneBar{position:absolute;z-index:1100;left:50%;bottom:28px;transform:translateX(-50%);background:#fff;border-radius:12px;padding:10px 14px;display:flex;gap:12px;align-items:center;font-size:13px;max-width:92vw}
+  #doneBar{position:absolute;z-index:1100;left:50%;bottom:36px;transform:translateX(-50%);background:#fff;border-radius:14px;padding:10px 14px;display:flex;gap:12px;align-items:center;font-size:13px;width:max-content;max-width:92vw}
 
-  .leaflet-popup-content-wrapper{border-radius:12px}
-  .leaflet-popup-content{margin:14px 16px;min-width:230px;max-height:60vh;overflow:auto}
+  /* Спливаючі вікна */
+  .leaflet-popup-content-wrapper{border-radius:14px;box-shadow:var(--sh)}
+  .leaflet-popup-content{margin:14px 16px;min-width:230px;max-width:78vw;max-height:55vh;overflow:auto}
   .view h3{margin:0 0 6px;font-size:17px}
-  .view p{margin:0;white-space:pre-wrap;color:#3c4043;line-height:1.4}
-  .ed label.h{display:block;font-size:12px;font-weight:600;color:var(--mut);margin:10px 0 4px}
-  .ed input[type=text],.ed textarea,.ed select{width:100%;padding:8px 10px;border:1px solid #dadce0;border-radius:8px;font:inherit;outline:none}
-  .ed input[type=range]{width:100%}
+  .view p{margin:0;white-space:pre-wrap;color:#3c4043;line-height:1.45}
+  .ed label.h{display:block;font-size:12px;font-weight:600;color:var(--mut);margin:12px 0 4px}
+  .ed input[type=text],.ed textarea,.ed select{width:100%;padding:9px 11px;border:1px solid #dadce0;border-radius:10px;font:inherit;font-size:16px;outline:none}
+  .ed input:focus,.ed textarea:focus{border-color:var(--blue);box-shadow:0 0 0 3px #d2e3fc}
+  .ed input[type=range]{width:100%;accent-color:var(--blue)}
   .ed .row{display:flex;gap:8px;margin-top:14px}
   .ed .row button{flex:1}
-  .sw{display:inline-block;width:24px;height:24px;margin:2px;border-radius:50%;cursor:pointer;border:3px solid transparent;box-shadow:0 0 0 1px #9aa0a6;vertical-align:middle}
+  .sw{display:inline-block;width:26px;height:26px;margin:2px;border-radius:50%;cursor:pointer;border:3px solid transparent;box-shadow:0 0 0 1px #9aa0a6;vertical-align:middle}
   .sw.sel{border-color:#fff;box-shadow:0 0 0 2px var(--blue)}
-  .ed input[type=color]{width:30px;height:26px;padding:0;border:0;background:none;vertical-align:middle;cursor:pointer}
+  .ed input[type=color]{width:32px;height:28px;padding:0;border:0;background:none;vertical-align:middle;cursor:pointer}
 
   .pin{width:22px;height:22px;border-radius:50% 50% 50% 0;transform:rotate(-45deg);border:2px solid #fff;box-shadow:0 1px 5px rgba(0,0,0,.5)}
   .lbl{transform:translate(-50%,-50%);white-space:nowrap;font-weight:700;text-shadow:0 0 3px #000,0 0 3px #000,0 0 6px #000}
   body.texting #map{cursor:crosshair}
-  #toast{position:fixed;left:50%;bottom:30px;transform:translateX(-50%);z-index:5000;background:#323232;color:#fff;padding:12px 18px;border-radius:8px;font-size:14px;max-width:90vw}
+  #toast{position:fixed;left:50%;bottom:30px;transform:translateX(-50%);z-index:5000;background:#323232;color:#fff;padding:12px 18px;border-radius:12px;font-size:14px;max-width:92vw;box-shadow:var(--sh)}
   #toast.err{background:#d93025}
+
+  /* Телефон */
+  @media(max-width:760px){
+    #search{right:12px;width:auto}
+    #bar{top:64px}
+    .lab{display:none}
+    .leaflet-control-zoom{display:none}
+    #layersWrap{bottom:34px}
+    #doneBar{bottom:96px;flex-direction:column;text-align:center;gap:8px}
+    #toast{bottom:96px}
+    .leaflet-pm-toolbar .leaflet-buttons-control-button{width:40px;height:40px}
+  }
 </style>
 </head>
 <body>
 
 <div id="login">
   <div class="card">
-    <h1>🗺️ Карта</h1>
+    <div class="logo">🗺️</div>
+    <h1>Карта</h1>
     <p>Росія та Україна</p>
-    <input id="code" type="password" placeholder="Код адміністратора">
+    <input id="code" type="password" placeholder="Код адміністратора" autocomplete="off">
     <div id="err"></div>
     <button id="btnAdmin">Увійти як адмін</button>
     <button id="btnGuest" class="sec">Продовжити як відвідувач</button>
@@ -89,21 +132,34 @@
 </div>
 
 <div id="bar" class="shadow" hidden>
-  <span class="badge" id="badge"></span>
-  <span id="adminTools" style="display:contents">
-    <button id="btnText" class="sec">Аа Текст</button>
-    <button id="btnMyMaps" class="sec" title="Завантажити з Google My Maps">📥 My Maps</button>
-    <label class="btn sec" title="Імпорт з файлу KML">📂 KML<input id="fileKml" type="file" accept=".kml,.xml" hidden></label>
-    <button id="btnPub">💾 Опублікувати</button>
-    <button id="btnReset" class="sec" title="Скинути чернетку">↺</button>
-  </span>
-  <button id="btnLogout" class="sec">Вийти</button>
+  <span class="chip" id="badge"></span>
+  <button id="btnText" class="ib adm" title="Додати текст на карту">Аа<span class="lab"> Текст</span></button>
+  <button id="btnPub" class="adm" title="Опублікувати зміни для всіх">💾<span class="lab"> Опублікувати</span></button>
+  <div id="menuWrap">
+    <button id="btnMenu" class="ib" title="Меню">⋯</button>
+    <div id="menu" class="shadow" hidden>
+      <button class="mi adm" id="btnMyMaps">📥 Імпорт з Google My Maps</button>
+      <label class="mi adm">📂 Імпорт KML-файлу<input id="fileKml" type="file" accept=".kml,.xml" hidden></label>
+      <button class="mi adm" id="btnReset">↺ Скинути чернетку</button>
+      <button class="mi" id="btnLogout">🚪 Вийти</button>
+    </div>
+  </div>
 </div>
 
-<div id="layers" class="shadow" hidden>
-  <div class="seg"><button id="bMap" class="on">Карта</button><button id="bLight">Світла</button><button id="bSat">Супутник</button></div>
-  <div id="lyList"></div>
-  <label><input type="checkbox" id="chkOcc"><span>Контур DeepState (довідково)<br><small id="occInfo">натисніть, щоб показати</small></span></label>
+<div id="layersWrap" hidden>
+  <div id="layersPanel" class="shadow">
+    <div class="ttl">Тип карти</div>
+    <div class="basegrid">
+      <button id="bMap" class="bt on"><i style="background:linear-gradient(135deg,#e6efd9,#fff 55%,#cfe3f5)"></i>Карта</button>
+      <button id="bLight" class="bt"><i style="background:linear-gradient(135deg,#f2f2f2,#fff,#e4e4e4)"></i>Світла</button>
+      <button id="bSat" class="bt"><i style="background:linear-gradient(135deg,#2f4a2a,#5a6b3c 50%,#1f3a52)"></i>Супутник</button>
+    </div>
+    <div class="sect" id="lySec" hidden><div class="ttl">Шари карти</div><div id="lyList"></div></div>
+    <div class="sect">
+      <label><input type="checkbox" id="chkOcc"><span>Контур DeepState<br><small id="occInfo">натисніть, щоб показати</small></span></label>
+    </div>
+  </div>
+  <button id="btnLayers" class="fab shadow" title="Шари">🗂</button>
 </div>
 
 <div id="doneBar" class="shadow" hidden>
@@ -126,11 +182,12 @@ const DATA_FILE = 'data.json';
 const DRAFT_KEY = 'mapDraft_v4', TOKEN_KEY = 'ghToken_v1';
 const COLORS = ['#ef4444','#f97316','#facc15','#22c55e','#3b82f6','#a855f7','#ffffff','#111111'];
 const SIZES = {s:14,m:20,l:30};
+const $ = id => document.getElementById(id);
 
 /* ===== КАРТА ===== */
 const map = L.map('map',{zoomControl:false,worldCopyJump:true}).setView([52.114,37.909],5);
 L.control.zoom({position:'bottomright'}).addTo(map);
-L.control.scale({imperial:false}).addTo(map);
+L.control.scale({imperial:false,position:'bottomright'}).addTo(map);
 const baseMap = L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',{maxZoom:19,subdomains:'abcd',attribution:'© OpenStreetMap, © CARTO'});
 const baseLight = L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',{maxZoom:19,subdomains:'abcd',attribution:'© OpenStreetMap, © CARTO'});
 const satGroup = L.layerGroup([
@@ -139,16 +196,17 @@ const satGroup = L.layerGroup([
 const bases={bMap:baseMap,bLight:baseLight,bSat:satGroup};
 let curBase=baseMap;curBase.addTo(map);
 Object.keys(bases).forEach(id=>{
-  document.getElementById(id).onclick=()=>{
+  $(id).onclick=()=>{
     map.removeLayer(curBase);curBase=bases[id];curBase.addTo(map);
-    Object.keys(bases).forEach(k=>document.getElementById(k).classList.toggle('on',k===id));
+    Object.keys(bases).forEach(k=>$(k).classList.toggle('on',k===id));
   };
 });
+$('btnLayers').onclick=()=>{$('layersPanel').hidden=!$('layersPanel').hidden;};
 
 /* ===== Контур DeepState (необов'язковий) ===== */
 map.createPane('occ').style.zIndex=390;
 const occLayer=L.geoJSON(null,{pane:'occ',interactive:false,style:{color:'#991b1b',weight:1.2,fillColor:'#dc2626',fillOpacity:.38}});
-const occInfo=document.getElementById('occInfo');let occLoaded=false;
+const occInfo=$('occInfo');let occLoaded=false;
 function showOcc(gj,label){occLayer.clearLayers();occLayer.addData(gj);occInfo.textContent='Дані: DeepState · '+label;}
 async function loadOccupied(){
   const R='https://raw.githubusercontent.com/cyterat/deepstate-map-data/main/data/deepstatemap_data_',now=Date.now();
@@ -161,7 +219,7 @@ async function loadOccupied(){
   }
   occInfo.textContent='не вдалося завантажити';
 }
-document.getElementById('chkOcc').onchange=e=>{
+$('chkOcc').onchange=e=>{
   if(e.target.checked){occLayer.addTo(map);if(!occLoaded){occLoaded=true;loadOccupied();}}else map.removeLayer(occLayer);
 };
 
@@ -195,9 +253,10 @@ function render(rebuild=true){
   if(rebuild)buildLayers();
 }
 function buildLayers(){
-  const box=document.getElementById('lyList');box.innerHTML='';
+  const box=$('lyList');box.innerHTML='';
   const names=[...new Set(items.map(i=>i.layer||''))];
-  if(names.length===1&&names[0]==='')return;
+  if(names.length===1&&names[0]===''){$('lySec').hidden=true;return;}
+  $('lySec').hidden=false;
   names.forEach(n=>{
     const c=items.filter(i=>(i.layer||'')===n).length;
     const lb=document.createElement('label');
@@ -260,14 +319,14 @@ function editor(it){
   };
   return d;
 }
-const doneBar=document.getElementById('doneBar');
+const doneBar=$('doneBar');
 function startShapeEdit(l,it){
   if(!l)return;
   l.pm.enable({allowSelfIntersection:true,snappable:true});
   doneBar.hidden=false;
   doneBar._end=()=>{l.pm.disable();it.coords=coordsOf(l);saveDraft();doneBar.hidden=true;render();};
 }
-document.getElementById('btnDone').onclick=()=>{if(doneBar._end)doneBar._end();};
+$('btnDone').onclick=()=>{if(doneBar._end)doneBar._end();};
 
 /* ===== МАЛЮВАННЯ ===== */
 function enableTools(){
@@ -286,10 +345,10 @@ map.on('pm:create',e=>{
   addItem(sh==='Marker'?'marker':(sh==='Polygon'||sh==='Rectangle')?'polygon':'line',c);
 });
 map.on('pm:remove',e=>{if(e.layer&&e.layer._id){items=items.filter(x=>x.id!==e.layer._id);saveDraft();}});
-const btnText=document.getElementById('btnText');
-function setTextMode(on){textMode=on;btnText.classList.toggle('on',on);btnText.classList.toggle('sec',!on);document.body.classList.toggle('texting',on);}
+const btnText=$('btnText');
+function setTextMode(on){textMode=on;btnText.classList.toggle('on',on);document.body.classList.toggle('texting',on);}
 btnText.onclick=()=>{
-  if(!textMode){map.pm.disableDraw();map.pm.disableGlobalEditMode();map.pm.disableGlobalRemovalMode();}
+  if(!textMode){map.pm.disableDraw();map.pm.disableGlobalEditMode();map.pm.disableGlobalRemovalMode();toast('Клікніть на карті, щоб поставити текст');}
   setTextMode(!textMode);
 };
 map.on('click',e=>{if(!textMode)return;setTextMode(false);addItem('text',[e.latlng.lat,e.latlng.lng]);});
@@ -351,33 +410,33 @@ function applyKML(text){
   try{map.fitBounds(store.getBounds(),{maxZoom:8});}catch(e){}
   toast(`Імпортовано: ${imp.length}. Тепер їх можна редагувати. Щоб побачили всі, натисніть «Опублікувати».`);
 }
-document.getElementById('btnMyMaps').onclick=async()=>{
+$('btnMyMaps').onclick=async()=>{
   const kml=`https://www.google.com/maps/d/kml?mid=${MYMAPS_ID}&forcekml=1`;
   toast('Завантажую з Google My Maps…');
   for(const u of [kml,'https://api.allorigins.win/raw?url='+encodeURIComponent(kml),'https://corsproxy.io/?'+encodeURIComponent(kml)]){
     try{const r=await fetch(u);if(r.ok){const t=await r.text();if(t.includes('<kml')){applyKML(t);return;}}}catch(e){}
   }
-  toast('Google не віддав дані автоматично. Відкрийте це посилання в браузері, збережіть файл і виберіть його кнопкою «📂 KML»:\n'+kml,true);
+  toast('Google не віддав дані автоматично. Відкрийте це посилання в браузері, збережіть файл і виберіть його через меню «Імпорт KML-файлу»:\n'+kml,true);
   console.log('KML:',kml);
 };
-document.getElementById('fileKml').onchange=async e=>{
+$('fileKml').onchange=async e=>{
   const f=e.target.files[0];if(!f)return;
   if(/\.kmz$/i.test(f.name)){alert('Потрібен файл .kml, а не .kmz.');return;}
   applyKML(await f.text());e.target.value='';
 };
 
 /* ===== ЗБЕРЕЖЕННЯ І ПУБЛІКАЦІЯ ===== */
-const btnPub=document.getElementById('btnPub');
+const btnPub=$('btnPub');
 function toast(msg,err){
-  let t=document.getElementById('toast');
-  if(!t){t=document.createElement('div');t.id='toast';document.body.appendChild(t);}
-  t.textContent=msg;t.className=err?'err':'';t.hidden=false;t.style.whiteSpace='pre-line';
+  let t=$('toast');
+  if(!t){t=document.createElement('div');t.id='toast';t.style.whiteSpace='pre-line';document.body.appendChild(t);}
+  t.textContent=msg;t.className=err?'err':'';t.hidden=false;
   clearTimeout(t._h);t._h=setTimeout(()=>t.hidden=true,err?15000:5000);
 }
 function refreshDirty(){
   const dirty=!!localStorage.getItem(DRAFT_KEY);
   btnPub.classList.toggle('dirty',dirty);
-  btnPub.textContent=dirty?'💾 Опублікувати •':'💾 Опублікувати';
+  btnPub.title=dirty?'Є неопубліковані зміни':'Опублікувати зміни для всіх';
 }
 function saveDraft(){
   try{localStorage.setItem(DRAFT_KEY,JSON.stringify(items));}
@@ -436,14 +495,20 @@ btnPub.onclick=async()=>{
     toast('❌ Помилка '+e+'. Перевірте токен: потрібен доступ Contents: Read and write до цього репозиторію. Спробуйте ще раз.',true);
   }
 };
-document.getElementById('btnReset').onclick=async()=>{
+$('btnReset').onclick=async()=>{
   if(!confirm('Скинути неопубліковані зміни і повернутись до опублікованої версії?'))return;
   localStorage.removeItem(DRAFT_KEY);await loadData();refreshDirty();
 };
 
+/* ===== МЕНЮ ===== */
+const menu=$('menu');
+$('btnMenu').onclick=e=>{e.stopPropagation();menu.hidden=!menu.hidden;};
+menu.addEventListener('click',()=>setTimeout(()=>menu.hidden=true,80));
+document.addEventListener('click',e=>{if(!$('menuWrap').contains(e.target))menu.hidden=true;});
+
 /* ===== ПОШУК ===== */
 async function doSearch(){
-  const q=document.getElementById('q').value.trim();if(!q)return;
+  const q=$('q').value.trim();if(!q)return;
   try{
     const j=await (await fetch('https://nominatim.openstreetmap.org/search?format=json&limit=1&accept-language=uk&q='+encodeURIComponent(q))).json();
     if(!j.length){toast('Нічого не знайдено',true);return;}
@@ -451,8 +516,8 @@ async function doSearch(){
     map.flyToBounds([[b[0],b[2]],[b[1],b[3]]],{maxZoom:15});
   }catch(e){toast('Помилка пошуку',true);}
 }
-document.getElementById('btnQ').onclick=doSearch;
-document.getElementById('q').onkeydown=e=>{if(e.key==='Enter')doSearch();};
+$('btnQ').onclick=doSearch;
+$('q').onkeydown=e=>{if(e.key==='Enter')doSearch();};
 
 /* ===== ВХІД ===== */
 async function sha(s){
@@ -461,20 +526,21 @@ async function sha(s){
 }
 async function start(admin){
   isAdmin=admin;
-  document.getElementById('login').hidden=true;
-  ['search','bar','layers'].forEach(id=>document.getElementById(id).hidden=false);
-  document.getElementById('badge').textContent=admin?'👑 Адмін':'👁 Відвідувач';
-  document.getElementById('adminTools').hidden=!admin;
+  $('login').hidden=true;
+  ['search','bar','layersWrap'].forEach(id=>$(id).hidden=false);
+  $('layersPanel').hidden=window.innerWidth<760;
+  $('badge').innerHTML=admin?'👑<span class="lab"> Адмін</span>':'👁<span class="lab"> Відвідувач</span>';
+  document.querySelectorAll('.adm').forEach(e=>e.hidden=!admin);
   if(admin)enableTools();
   await loadData();
 }
-document.getElementById('btnAdmin').onclick=async()=>{
-  if(await sha(document.getElementById('code').value)===ADMIN_HASH){sessionStorage.setItem('role','admin');start(true);}
-  else document.getElementById('err').textContent='Невірний код';
+$('btnAdmin').onclick=async()=>{
+  if(await sha($('code').value)===ADMIN_HASH){sessionStorage.setItem('role','admin');start(true);}
+  else $('err').textContent='Невірний код';
 };
-document.getElementById('code').onkeydown=e=>{if(e.key==='Enter')document.getElementById('btnAdmin').click();};
-document.getElementById('btnGuest').onclick=()=>{sessionStorage.setItem('role','guest');start(false);};
-document.getElementById('btnLogout').onclick=()=>{sessionStorage.removeItem('role');location.reload();};
+$('code').onkeydown=e=>{if(e.key==='Enter')$('btnAdmin').click();};
+$('btnGuest').onclick=()=>{sessionStorage.setItem('role','guest');start(false);};
+$('btnLogout').onclick=()=>{sessionStorage.removeItem('role');location.reload();};
 const role=sessionStorage.getItem('role');
 if(role==='admin')start(true);else if(role==='guest')start(false);
 </script>
