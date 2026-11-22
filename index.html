@@ -76,6 +76,18 @@
 
   #doneBar{position:absolute;z-index:1100;left:50%;bottom:36px;transform:translateX(-50%);background:#fff;border-radius:14px;padding:10px 14px;display:flex;gap:12px;align-items:center;font-size:13px;width:max-content;max-width:92vw}
 
+  /* Повідомлення про помилку */
+  #bugModal{position:fixed;inset:0;z-index:2500;background:rgba(0,0,0,.45);display:flex;align-items:center;justify-content:center;padding:12px}
+  .mcard{background:#fff;border-radius:18px;padding:22px;width:min(440px,100%);max-height:94vh;overflow:auto}
+  .mcard h2{margin:0 0 4px;font-size:19px}
+  .mcard .mut{margin:0 0 6px;color:var(--mut);font-size:13px;line-height:1.4}
+  .mcard label{display:block;font-size:12px;font-weight:600;color:var(--mut);margin:14px 0 5px}
+  .mcard textarea,.mcard input[type=text]{width:100%;padding:10px 12px;border:1px solid #dadce0;border-radius:10px;font:inherit;font-size:16px;outline:none}
+  .mcard textarea:focus,.mcard input[type=text]:focus{border-color:var(--blue);box-shadow:0 0 0 3px #d2e3fc}
+  .locrow{display:flex;gap:10px;align-items:center;font-size:13px;color:var(--mut)}
+  .mcard .row{display:flex;gap:8px;margin-top:18px}
+  .mcard .row button{flex:1;padding:11px}
+
   /* Спливаючі вікна */
   .leaflet-popup-content-wrapper{border-radius:14px;box-shadow:var(--sh)}
   .leaflet-popup-content{margin:14px 16px;min-width:230px;max-width:78vw;max-height:55vh;overflow:auto}
@@ -93,7 +105,7 @@
 
   .pin{width:22px;height:22px;border-radius:50% 50% 50% 0;transform:rotate(-45deg);border:2px solid #fff;box-shadow:0 1px 5px rgba(0,0,0,.5)}
   .lbl{transform:translate(-50%,-50%);white-space:nowrap;font-weight:700;text-shadow:0 0 3px #000,0 0 3px #000,0 0 6px #000}
-  body.texting #map{cursor:crosshair}
+  body.texting #map,body.picking #map{cursor:crosshair}
   #toast{position:fixed;left:50%;bottom:30px;transform:translateX(-50%);z-index:5000;background:#323232;color:#fff;padding:12px 18px;border-radius:12px;font-size:14px;max-width:92vw;box-shadow:var(--sh)}
   #toast.err{background:#d93025}
 
@@ -135,6 +147,7 @@
   <span class="chip" id="badge"></span>
   <button id="btnText" class="ib adm" title="Додати текст на карту">Аа<span class="lab"> Текст</span></button>
   <button id="btnPub" class="adm" title="Опублікувати зміни для всіх">💾<span class="lab"> Опублікувати</span></button>
+  <button id="btnBug" class="ib" title="Повідомити про помилку на карті">🐞<span class="lab"> Помилка</span></button>
   <div id="menuWrap">
     <button id="btnMenu" class="ib" title="Меню">⋯</button>
     <div id="menu" class="shadow" hidden>
@@ -167,6 +180,21 @@
   <button id="btnDone">Готово</button>
 </div>
 
+<div id="bugModal" hidden>
+  <div class="mcard shadow">
+    <h2>🐞 Повідомити про помилку</h2>
+    <p class="mut">Опишіть, що не так із картою: неправильна межа, зникла фігура, помилка в тексті тощо.</p>
+    <label>Що сталося?</label>
+    <textarea id="bugText" rows="4" maxlength="2000" placeholder="Опишіть проблему…"></textarea>
+    <label>Місце на карті (необов'язково)</label>
+    <div class="locrow"><button id="bugPick" class="sec">📍 Вказати на карті</button><span id="bugLoc">не вказано</span></div>
+    <label>Як з вами зв'язатися (необов'язково)</label>
+    <input id="bugContact" type="text" maxlength="120" placeholder="Email або Telegram">
+    <input id="bugHp" type="text" tabindex="-1" autocomplete="off" aria-hidden="true" style="position:absolute;left:-9999px;opacity:0">
+    <div class="row"><button id="bugSend">Надіслати</button><button id="bugCancel" class="sec">Скасувати</button></div>
+  </div>
+</div>
+
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@geoman-io/leaflet-geoman-free@2.17.0/dist/leaflet-geoman.min.js"></script>
 <script>
@@ -177,6 +205,10 @@
 const ADMIN_HASH = '240be518fabd2724ddb6f04eeb1da5967448d7e831c08c8fa822809f74c720a9';
 const GH_OWNER = '';   // залиште порожніми для ваш-логін.github.io
 const GH_REPO  = '';
+// Куди надсилати повідомлення про помилки. Вставте адресу форми Formspree, наприклад:
+//   const REPORT_URL = 'https://formspree.io/f/xxxxxxxx';
+// Якщо порожньо, відкриється сторінка нової проблеми (Issue) у вашому репозиторії GitHub.
+const REPORT_URL = '';
 const MYMAPS_ID = '1gejF6m_NsZ9gfy_Ju5Ml4jraEIA4qzk';
 const DATA_FILE = 'data.json';
 const DRAFT_KEY = 'mapDraft_v4', TOKEN_KEY = 'ghToken_v1';
@@ -351,7 +383,57 @@ btnText.onclick=()=>{
   if(!textMode){map.pm.disableDraw();map.pm.disableGlobalEditMode();map.pm.disableGlobalRemovalMode();toast('Клікніть на карті, щоб поставити текст');}
   setTextMode(!textMode);
 };
-map.on('click',e=>{if(!textMode)return;setTextMode(false);addItem('text',[e.latlng.lat,e.latlng.lng]);});
+
+/* ===== ПОВІДОМЛЕННЯ ПРО ПОМИЛКУ ===== */
+let bugLL=null,bugMark=null,picking=false;
+function openBug(){picking=false;document.body.classList.remove('picking');$('bugModal').hidden=false;}
+function closeBug(){$('bugModal').hidden=true;}
+function setBugLL(ll){
+  bugLL=ll;if(bugMark)map.removeLayer(bugMark);
+  bugMark=L.circleMarker(ll,{radius:9,color:'#fff',weight:3,fillColor:'#d93025',fillOpacity:1,interactive:false}).addTo(map);
+  $('bugLoc').textContent=ll.lat.toFixed(4)+', '+ll.lng.toFixed(4);
+}
+function clearBug(){
+  bugLL=null;if(bugMark){map.removeLayer(bugMark);bugMark=null;}
+  $('bugLoc').textContent='не вказано';$('bugText').value='';
+}
+$('btnBug').onclick=openBug;
+$('bugCancel').onclick=closeBug;
+$('bugModal').addEventListener('click',e=>{if(e.target.id==='bugModal')closeBug();});
+$('bugPick').onclick=()=>{
+  picking=true;closeBug();document.body.classList.add('picking');
+  toast('Клікніть на карті там, де помилка');
+};
+$('bugSend').onclick=()=>{
+  if($('bugHp').value){closeBug();clearBug();return;}   // пастка для ботів
+  const text=$('bugText').value.trim();
+  if(text.length<5){toast('Опишіть проблему трохи детальніше',true);return;}
+  if(Date.now()-(+localStorage.getItem('bugLast')||0)<30000){toast('Зачекайте пів хвилини перед наступним повідомленням',true);return;}
+  const c=map.getCenter();
+  const info={message:text,contact:$('bugContact').value.trim(),
+    place:bugLL?bugLL.lat.toFixed(5)+','+bugLL.lng.toFixed(5):'не вказано',
+    view:c.lat.toFixed(4)+','+c.lng.toFixed(4)+' z'+map.getZoom(),
+    page:location.href.split('#')[0],browser:navigator.userAgent,time:new Date().toISOString()};
+  if(REPORT_URL){
+    fetch(REPORT_URL,{method:'POST',headers:{'Content-Type':'application/json',Accept:'application/json'},body:JSON.stringify(info)})
+      .then(r=>{if(!r.ok)throw 0;localStorage.setItem('bugLast',Date.now());closeBug();clearBug();toast('✅ Дякуємо! Повідомлення надіслано.');})
+      .catch(()=>toast('Не вдалося надіслати. Спробуйте пізніше.',true));
+    return;
+  }
+  const r=ghRepo();
+  if(!r){toast('Надсилання не налаштоване: вкажіть REPORT_URL у коді сайту.',true);return;}
+  const body=`**Опис**\n${info.message}\n\n**Місце на карті:** ${info.place}\n**Вигляд карти:** ${info.view}\n**Контакт:** ${info.contact||'—'}\n**Сторінка:** ${info.page}\n**Браузер:** ${info.browser}`;
+  window.open(`https://github.com/${r[0]}/${r[1]}/issues/new?title=${encodeURIComponent('Помилка на карті: '+text.slice(0,60))}&body=${encodeURIComponent(body)}`,'_blank');
+  closeBug();clearBug();
+  toast('Відкрито сторінку GitHub. Натисніть там «Submit new issue», щоб надіслати.');
+};
+
+/* Єдиний обробник кліків по карті */
+map.on('click',e=>{
+  if(picking){setBugLL(e.latlng);openBug();return;}
+  if(!textMode)return;
+  setTextMode(false);addItem('text',[e.latlng.lat,e.latlng.lng]);
+});
 
 /* ===== ІМПОРТ З GOOGLE MY MAPS (KML) ===== */
 const kmlColor=c=>(!c||c.length<8)?null:{hex:'#'+c.slice(6,8)+c.slice(4,6)+c.slice(2,4),a:parseInt(c.slice(0,2),16)/255};
