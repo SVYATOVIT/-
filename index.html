@@ -18,6 +18,7 @@
   .ib{background:#fff;color:var(--txt);box-shadow:inset 0 0 0 1px var(--line)}
   .ib:hover{background:#f1f3f4;filter:none}
   .ib.on{background:var(--blue);color:#fff;box-shadow:none}
+  .ib.on.red{background:#d93025}
   .sec{background:#f1f3f4;color:var(--txt)}
   .danger{background:#d93025}
   .shadow{box-shadow:var(--sh)}
@@ -71,6 +72,7 @@
   #layersPanel label{display:flex;gap:10px;align-items:center;font-size:14px;padding:5px 0;cursor:pointer;line-height:1.3}
   #layersPanel input[type=checkbox]{width:18px;height:18px;accent-color:var(--blue);flex:none}
   #layersPanel small{color:var(--mut)}
+  #layersPanel .ldel{margin-left:auto;padding:4px 8px;font-size:13px;background:transparent;color:#d93025;box-shadow:inset 0 0 0 1px #f3c5c1}
   .fab{width:44px;height:44px;border-radius:12px;font-size:20px;padding:0;background:#fff;color:var(--txt)}
   .fab:hover{background:#f1f3f4;filter:none}
 
@@ -106,8 +108,10 @@
   .pin{width:22px;height:22px;border-radius:50% 50% 50% 0;transform:rotate(-45deg);border:2px solid #fff;box-shadow:0 1px 5px rgba(0,0,0,.5)}
   .lbl{transform:translate(-50%,-50%);white-space:nowrap;font-weight:700;text-shadow:0 0 3px #000,0 0 3px #000,0 0 6px #000}
   body.texting #map,body.picking #map{cursor:crosshair}
+  body.deleting .leaflet-interactive{cursor:pointer !important}
   #toast{position:fixed;left:50%;bottom:30px;transform:translateX(-50%);z-index:5000;background:#323232;color:#fff;padding:12px 18px;border-radius:12px;font-size:14px;max-width:92vw;box-shadow:var(--sh)}
   #toast.err{background:#d93025}
+  #toast button{margin-left:12px;background:#8ab4f8;color:#202124;padding:6px 12px}
 
   /* Телефон */
   @media(max-width:760px){
@@ -146,11 +150,13 @@
 <div id="bar" class="shadow" hidden>
   <span class="chip" id="badge"></span>
   <button id="btnText" class="ib adm" title="Додати текст на карту">Аа<span class="lab"> Текст</span></button>
+  <button id="btnDel" class="ib adm red" title="Режим видалення: клік по фігурі її видаляє">🗑<span class="lab"> Видалити</span></button>
   <button id="btnPub" class="adm" title="Опублікувати зміни для всіх">💾<span class="lab"> Опублікувати</span></button>
   <button id="btnBug" class="ib" title="Повідомити про помилку на карті">🐞<span class="lab"> Помилка</span></button>
   <div id="menuWrap">
     <button id="btnMenu" class="ib" title="Меню">⋯</button>
     <div id="menu" class="shadow" hidden>
+      <button class="mi adm" id="btnUndo">↩ Скасувати видалення</button>
       <button class="mi adm" id="btnMyMaps">📥 Імпорт з Google My Maps</button>
       <label class="mi adm">📂 Імпорт KML-файлу<input id="fileKml" type="file" accept=".kml,.xml" hidden></label>
       <button class="mi adm" id="btnReset">↺ Скинути чернетку</button>
@@ -257,7 +263,8 @@ $('chkOcc').onchange=e=>{
 
 /* ===== ОБ'ЄКТИ ===== */
 const store=new L.FeatureGroup().addTo(map);
-let items=[],isAdmin=false,textMode=false;const hidden=new Set();
+let items=[],isAdmin=false,textMode=false,deleteMode=false;const hidden=new Set();
+const undoStack=[];
 const uid=()=>Math.random().toString(36).slice(2,10);
 const esc=s=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 function pinIcon(c){return L.divIcon({className:'',html:`<div class="pin" style="background:${c}"></div>`,iconSize:[22,22],iconAnchor:[11,22],popupAnchor:[0,-22]});}
@@ -277,6 +284,11 @@ function makeLayer(it){
   if(it.type!=='text'||isAdmin)l.bindPopup(()=>isAdmin?editor(it):viewer(it),{maxWidth:320});
   const upd=()=>{it.coords=coordsOf(l);saveDraft();};
   l.on('pm:edit',upd);l.on('pm:dragend',upd);
+  if(isAdmin){
+    l.on('click',e=>{if(deleteMode){L.DomEvent.stopPropagation(e);l.closePopup();delItems([it]);}});
+    l.on('mouseover',()=>{if(deleteMode&&l.setStyle)l.setStyle({color:'#d93025',fillColor:'#d93025'});});
+    l.on('mouseout',()=>{if(l.setStyle)l.setStyle(it.type==='polygon'?{color:it.color,fillColor:it.fc||it.color}:{color:it.color});});
+  }
   return l;
 }
 function render(rebuild=true){
@@ -292,8 +304,14 @@ function buildLayers(){
   names.forEach(n=>{
     const c=items.filter(i=>(i.layer||'')===n).length;
     const lb=document.createElement('label');
-    lb.innerHTML=`<input type="checkbox" ${hidden.has(n)?'':'checked'}><span>${esc(n||'Без шару')} <small>(${c})</small></span>`;
+    lb.innerHTML=`<input type="checkbox" ${hidden.has(n)?'':'checked'}><span>${esc(n||'Без шару')} <small>(${c})</small></span>${isAdmin?'<button class="ldel" title="Видалити весь шар">🗑</button>':''}`;
     lb.querySelector('input').onchange=e=>{e.target.checked?hidden.delete(n):hidden.add(n);render(false);};
+    const del=lb.querySelector('.ldel');
+    if(del)del.onclick=e=>{
+      e.preventDefault();
+      if(!confirm(`Видалити шар «${n||'Без шару'}» разом з усіма його об'єктами (${c})?\nПотім це можна скасувати.`))return;
+      delItems(items.filter(i=>(i.layer||'')===n));
+    };
     box.appendChild(lb);
   });
 }
@@ -302,6 +320,39 @@ function viewer(it){
   d.innerHTML=`<h3>${esc(it.title)||'Без назви'}</h3>${it.desc?`<p>${esc(it.desc)}</p>`:''}`;
   return d;
 }
+
+/* ===== ВИДАЛЕННЯ І СКАСУВАННЯ ===== */
+function delItems(list){
+  const rec=list.map(it=>({it,i:items.indexOf(it)})).filter(r=>r.i>=0).sort((a,b)=>a.i-b.i);
+  if(!rec.length)return;
+  items=items.filter(x=>!list.includes(x));
+  undoStack.push(rec);saveDraft();render();
+  toast(rec.length>1?`Видалено об'єктів: ${rec.length}`:`Видалено: ${rec[0].it.title||'об\'єкт'}`,false,{label:'Скасувати',fn:undo});
+}
+function undo(){
+  const rec=undoStack.pop();
+  if(!rec){toast('Нема що скасовувати');return;}
+  rec.forEach(r=>items.splice(Math.min(r.i,items.length),0,r.it));
+  saveDraft();render();toast('Відновлено');
+}
+$('btnUndo').onclick=undo;
+document.addEventListener('keydown',e=>{
+  if(e.key==='Escape'){setDeleteMode(false);setTextMode(false);return;}
+  if(!isAdmin||!(e.ctrlKey||e.metaKey)||e.key.toLowerCase()!=='z')return;
+  if(/INPUT|TEXTAREA|SELECT/.test((document.activeElement||{}).tagName||''))return;
+  e.preventDefault();undo();
+});
+const btnDel=$('btnDel');
+function setDeleteMode(on){
+  if(deleteMode===on)return;
+  deleteMode=on;btnDel.classList.toggle('on',on);document.body.classList.toggle('deleting',on);
+  if(on){
+    setTextMode(false);map.closePopup();
+    try{map.pm.disableDraw();map.pm.disableGlobalEditMode();}catch(e){}
+    toast('Режим видалення: клікніть на фігуру. Esc або повторне натискання вимикає режим.');
+  }
+}
+btnDel.onclick=()=>setDeleteMode(!deleteMode);
 
 /* ===== РЕДАКТОР ===== */
 function editor(it){
@@ -345,15 +396,13 @@ function editor(it){
     it.layer=d.querySelector('.ly').value.trim();
     saveDraft();map.closePopup();render();
   };
-  d.querySelector('.del').onclick=()=>{
-    if(!confirm('Видалити об\'єкт?'))return;
-    items=items.filter(x=>x!==it);saveDraft();map.closePopup();render();
-  };
+  d.querySelector('.del').onclick=()=>{map.closePopup();delItems([it]);};
   return d;
 }
 const doneBar=$('doneBar');
 function startShapeEdit(l,it){
   if(!l)return;
+  setDeleteMode(false);
   l.pm.enable({allowSelfIntersection:true,snappable:true});
   doneBar.hidden=false;
   doneBar._end=()=>{l.pm.disable();it.coords=coordsOf(l);saveDraft();doneBar.hidden=true;render();};
@@ -365,22 +414,22 @@ function enableTools(){
   try{map.pm.setLang('ua');}catch(e){}
   map.pm.setPathOptions({color:'#1a73e8',fillColor:'#1a73e8',fillOpacity:.3});
   map.pm.addControls({position:'topleft',drawMarker:true,drawPolygon:true,drawPolyline:true,drawRectangle:true,
-    drawCircle:false,drawCircleMarker:false,drawText:false,editMode:true,dragMode:true,cutPolygon:false,removalMode:true,rotateMode:false});
+    drawCircle:false,drawCircleMarker:false,drawText:false,editMode:true,dragMode:true,cutPolygon:false,removalMode:false,rotateMode:false});
 }
 function addItem(type,coords){
   const it={id:uid(),type,coords,title:'',desc:'',color:type==='marker'?COLORS[0]:type==='text'?COLORS[6]:COLORS[4],fill:.3,size:'m'};
   items.push(it);saveDraft();render();
   store.eachLayer(l=>{if(l._id===it.id)l.openPopup();});
 }
+map.on('pm:drawstart',()=>{setDeleteMode(false);setTextMode(false);});
 map.on('pm:create',e=>{
   const sh=e.shape,c=coordsOf(e.layer);e.layer.remove();
   addItem(sh==='Marker'?'marker':(sh==='Polygon'||sh==='Rectangle')?'polygon':'line',c);
 });
-map.on('pm:remove',e=>{if(e.layer&&e.layer._id){items=items.filter(x=>x.id!==e.layer._id);saveDraft();}});
 const btnText=$('btnText');
 function setTextMode(on){textMode=on;btnText.classList.toggle('on',on);document.body.classList.toggle('texting',on);}
 btnText.onclick=()=>{
-  if(!textMode){map.pm.disableDraw();map.pm.disableGlobalEditMode();map.pm.disableGlobalRemovalMode();toast('Клікніть на карті, щоб поставити текст');}
+  if(!textMode){setDeleteMode(false);map.pm.disableDraw();map.pm.disableGlobalEditMode();toast('Клікніть на карті, щоб поставити текст');}
   setTextMode(!textMode);
 };
 
@@ -488,7 +537,7 @@ function applyKML(text){
   if(!imp.length){alert('У файлі не знайдено об\'єктів.');return;}
   const replace=confirm(`Знайдено об'єктів: ${imp.length}.\n\nOK — ЗАМІНИТИ всі поточні об'єкти імпортованими.\nСкасувати — ДОДАТИ до існуючих.`);
   items=replace?imp:items.concat(imp);
-  hidden.clear();saveDraft();render();
+  hidden.clear();undoStack.length=0;saveDraft();render();
   try{map.fitBounds(store.getBounds(),{maxZoom:8});}catch(e){}
   toast(`Імпортовано: ${imp.length}. Тепер їх можна редагувати. Щоб побачили всі, натисніть «Опублікувати».`);
 }
@@ -509,11 +558,16 @@ $('fileKml').onchange=async e=>{
 
 /* ===== ЗБЕРЕЖЕННЯ І ПУБЛІКАЦІЯ ===== */
 const btnPub=$('btnPub');
-function toast(msg,err){
+function toast(msg,err,act){
   let t=$('toast');
   if(!t){t=document.createElement('div');t.id='toast';t.style.whiteSpace='pre-line';document.body.appendChild(t);}
   t.textContent=msg;t.className=err?'err':'';t.hidden=false;
-  clearTimeout(t._h);t._h=setTimeout(()=>t.hidden=true,err?15000:5000);
+  if(act){
+    const b=document.createElement('button');b.textContent=act.label;
+    b.onclick=()=>{t.hidden=true;act.fn();};
+    t.appendChild(b);
+  }
+  clearTimeout(t._h);t._h=setTimeout(()=>t.hidden=true,err?15000:act?9000:5000);
 }
 function refreshDirty(){
   const dirty=!!localStorage.getItem(DRAFT_KEY);
@@ -579,7 +633,7 @@ btnPub.onclick=async()=>{
 };
 $('btnReset').onclick=async()=>{
   if(!confirm('Скинути неопубліковані зміни і повернутись до опублікованої версії?'))return;
-  localStorage.removeItem(DRAFT_KEY);await loadData();refreshDirty();
+  localStorage.removeItem(DRAFT_KEY);undoStack.length=0;await loadData();refreshDirty();
 };
 
 /* ===== МЕНЮ ===== */
